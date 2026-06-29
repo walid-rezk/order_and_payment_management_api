@@ -2,13 +2,13 @@
 
 namespace Tests\Feature;
 
+use Mockery;
 use Tests\TestCase;
 use App\Models\User;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Enums\OrderStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use App\Services\PaymentManager;
-use Mockery;
 
 class OrderPaymentApiTest extends TestCase
 {
@@ -73,7 +73,7 @@ class OrderPaymentApiTest extends TestCase
     {
         $order = Order::factory()->create([
             'user_id' => $this->user->id,
-            'status' => 'pending',
+            'status' => OrderStatus::PENDING,
             'total' => 90.00
         ]);
 
@@ -87,34 +87,33 @@ class OrderPaymentApiTest extends TestCase
     {
         $order = Order::factory()->create([
             'user_id' => $this->user->id,
-            'status' => 'confirmed',
-            'total' => 90.00
+            'status'  => OrderStatus::CONFIRMED,
+            'total'   => 90.00
         ]);
 
-        $paymentResult = new \App\DTOs\PaymentResult(
-            success: true,
-            message: 'successful',
-            transactionId: 'tx_mock_777'
-        );
-
-        // 2. Mock the expected Gateway Strategy behavior returning the explicit DTO Type
         $mockGateway = Mockery::mock(\App\Services\PaymentGateways\CreditCardGateway::class);
         $mockGateway->shouldReceive('processPayment')
             ->once()
             ->with(Mockery::any(), 90.00)
-            ->andReturn($paymentResult);
+            ->andReturn(new \App\DTOs\PaymentResult(
+                success: true,
+                message: 'successful',
+                transactionId: 'tx_mock_777'
+            ));
 
-        // 3. Mock your App\Services\PaymentManager and define the 'resolveGateway' expectation
         $mockPaymentManager = Mockery::mock(\App\Services\PaymentManager::class);
+
+        $mockPaymentManager->shouldReceive('getAvailableGateways')
+            ->zeroOrMoreTimes()
+            ->andReturn(['credit_card', 'paypal']);
+
         $mockPaymentManager->shouldReceive('resolveGateway')
             ->once()
             ->with('credit_card')
             ->andReturn($mockGateway);
 
-        // 4. Swap the real container instance with your fully configured mock
         $this->instance(\App\Services\PaymentManager::class, $mockPaymentManager);
 
-        // 5. Execute the endpoint call
         $this->postJson("/api/orders/{$order->id}/payments", [
             'payment_method' => 'credit_card',
             'amount' => 90.00
