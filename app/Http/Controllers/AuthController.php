@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 
@@ -41,7 +41,6 @@ class AuthController extends Controller
             'user' => $user,
             'authorization' => [
                 'token' => $token,
-                'type' => 'bearer',
             ],
         ], 201);
     }
@@ -76,7 +75,6 @@ class AuthController extends Controller
             'user' => auth()->user(),
             'authorization' => [
                 'token' => $token,
-                'type' => 'bearer',
             ],
         ]);
     }
@@ -112,7 +110,6 @@ class AuthController extends Controller
             'user' => auth()->user(),
             'authorization' => [
                 'token' => auth()->refresh(),
-                'type' => 'bearer',
             ],
         ]);
     }

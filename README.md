@@ -1,58 +1,163 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Order and Payment Management API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+RESTful APIs built with Laravel for managing orders and payments securely. Using the Strategy Design Pattern to make the payment infrastructure infinitely extendable, allowing to add a new payment gateways with minimal effort.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## 🚀 Setup Instructions (Dockerized)
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+This project is fully dockerized using a custom Docker Compose orchestration. Follow these steps to spin up the local development environment.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
 
-## Learning Laravel
+### Step-by-Step Installation
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+1. **Clone the Repository:**
+   ```bash
+   git clone https://github.com/walid-rezk/order_and_payment_management_api.git
+   cd order_and_payment_management_api
+2. **Environment Variables:**
+   ```bash
+   cp .env.example .env
+3. **Build the Application:**
+   ```bash
+   docker compose up -d --build
+4. **Install Composer Dependencies inside the Container:**
+   ```bash
+   docker compose exec app composer install
+5. **Generate Application and JWT Security Keys:**
+   ```bash
+   docker compose exec app php artisan key:generate
+   docker compose exec app php artisan jwt:secret
+6. **Run Database Migrations and Seeders:**
+   ```bash
+   docker compose exec app php artisan migrate --seed
+7. **Clear Application Cache:**
+   ```bash
+   docker compose exec app php artisan config:clear
+   docker compose exec app php artisan cache:clear
+***Now, the APIs is fully accessible at: http://localhost:8080***
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+8. **Running the Test:**
+   ```bash
+   docker compose exec app php artisan test
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+## 🛠️ Payment Gateway Extensibility (Strategy Pattern)
+The system implements the Strategy Design Pattern managed through a central Service Container Provider, allowing new payment methods to be integrated without altering core controllers or existing checkout flows.
 
-## Agentic Development
+**How to Add a New Payment Gateway (EX: Stripe)**
+1. **Create the Gateway Strategy Class:**
+   Create `App\Services\PaymentGateways\StripeGateway.php` and implement the interface `App\Contracts\PaymentGatewayInterface`:
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+   ```php
+   <?php
 
-```bash
-composer require laravel/boost --dev
+   namespace App\Services\PaymentGateways;
 
-php artisan boost:install
-```
+   use App\Contracts\PaymentGatewayInterface;
+   use App\DTOs\PaymentResult;
+   use App\Models\Order;
+   use Illuminate\Support\Str;
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+   class StripeGateway implements PaymentGatewayInterface
+   {
+      private string $apiKey;
+      private string $secret;
 
-## Contributing
+      public function __construct()
+      {
+         $this->apiKey = config('gateways.stripe.api_key', '');
+         $this->secret = config('gateways.stripe.secret', '');
+      }
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+      /**
+      * {@inheritdoc}
+      */
+      public function getName(): string
+      {
+         return 'stripe';
+      }
 
-## Code of Conduct
+      /**
+      * Simulate stripe payment processing.
+      */
+      public function processPayment(Order $order, float $amount): PaymentResult
+      {
+         // Validate gateway configuration
+         if (empty($this->apiKey) || empty($this->secret)) {
+               return PaymentResult::failed('Stripe gateway is not configured.');
+         }
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+         // Simulate payment processing, this would be an API call on production
+         $transactionId = 'stripe_txn_' . Str::uuid()->toString();
 
-## Security Vulnerabilities
+         return PaymentResult::successful(
+               transactionId: $transactionId,
+               message: "Stripe payment of \${$amount} processed successfully.",
+         );
+      }
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+      /**
+      * {@inheritdoc}
+      */
+      public function supportsMethod(string $method): bool
+      {
+         return $method === 'stripe';
+      }
+   }
+2. **Bootstrap the new gateway inside the Service Provider:**
+   Open `App\Providers\PaymentServiceProvider.php` and register your new class inside the `boot()` method:
 
-## License
+   ```php
+   public function boot(): void
+   {
+      /** @var PaymentManager $manager */
+      $manager = $this->app->make(PaymentManager::class);
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+      $manager->registerGateway(new CreditCardGateway());
+      $manager->registerGateway(new PaypalGateway());
+      $manager->registerGateway(new StripeGateway()); // the new one should be added
+   }
+2. **Add the new configuration to `config/gateways.php`:**
+   ```php
+   <?php
+
+   return [
+
+      /*
+      |--------------------------------------------------------------------------
+      | Payment Gateway Configuration
+      |--------------------------------------------------------------------------
+      |
+      | Configure credentials for each payment gateway. These values are
+      | read from your .env file. To add a new gateway, add a new entry
+      | here and create the corresponding gateway class.
+      |
+      */
+
+      'credit_card' => [
+         'api_key' => env('CREDIT_CARD_API_KEY', ''),
+         'secret'  => env('CREDIT_CARD_SECRET', ''),
+      ],
+
+      'paypal' => [
+         'client_id' => env('PAYPAL_CLIENT_ID', ''),
+         'secret'    => env('PAYPAL_SECRET', ''),
+      ],
+
+      // the new gateway
+      'stripe' => [
+         'api_key' => env('STRIPE_API_KEY', ''),
+         'secret'  => env('STRIPE_SECRET', ''),
+      ],
+
+   ];
+3. **Add the new environment variables to `.env` file:**
+   ```.env
+   STRIPE_API_KEY=stripe_test_key_11111
+   STRIPE_SECRET=stripe_test_secret_6666
+## 📝 Additional Notes
+1. **Payment Restriction**: Payments can only be processed if an order's status is explicitly marked as `confirmed`. Attempting to pay for a `pending` or `cancelled` order throws a `422 Unprocessable Entity` validation exception.
+
+2. **Deletion Cascade Guard**: Orders cannot be deleted if they have any payments associated with them `(422 Unprocessable Entity)`. Orders without payments can be deleted safely along with their associated order items.
+
+3. **Data Ownership**: All operations inside OrderController are scoped strictly to `auth()->id()`. A logged-in user cannot view, update, or delete orders belonging to another user id  returns `(404 Not Found)`.

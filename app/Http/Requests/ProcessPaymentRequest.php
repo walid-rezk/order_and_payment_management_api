@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use Illuminate\Validation\Rule;
+use App\Services\PaymentManager;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ProcessPaymentRequest extends FormRequest
@@ -21,8 +23,10 @@ class ProcessPaymentRequest extends FormRequest
      */
     public function rules(): array
     {
+        $availableGateways = app(PaymentManager::class)->getAvailableGateways();
+
         return [
-            'payment_method' => ['required', 'string', 'in:credit_card,paypal'],
+            'payment_method' => ['required', 'string', Rule::in($availableGateways)],
             'amount' => ['required', 'numeric', 'min:0.01'],
         ];
     }
@@ -34,11 +38,15 @@ class ProcessPaymentRequest extends FormRequest
      */
     public function messages(): array
     {
+        $availableGateways = app(PaymentManager::class)->getAvailableGateways();
+
+        $gatewaysString = implode(', ', $availableGateways);
+
         return [
             'payment_method.required' => 'A payment method is required.',
-            'payment_method.in' => 'Payment method must be one of: credit_card, paypal.',
-            'amount.required' => 'A payment amount is required.',
-            'amount.min' => 'Payment amount must be at least 0.01.',
+            'payment_method.in'       => "Payment method must be one of: {$gatewaysString}.",
+            'amount.required'         => 'A payment amount is required.',
+            'amount.min'              => 'Payment amount must be at least 0.01.',
         ];
     }
 }

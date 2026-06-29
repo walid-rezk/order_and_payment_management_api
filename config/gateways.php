@@ -8,8 +8,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | Configure credentials for each payment gateway. These values are
-    | read from your .env file. To add a new gateway, add a new entry
-    | here and create the corresponding gateway class.
+    | read from your .env file.
     |
     */
 

@@ -7,11 +7,6 @@ use App\Models\Order;
 
 /**
  * Interface for all payment gateway implementations.
- *
- * To add a new payment gateway:
- * 1. Create a class implementing this interface in App\Services\PaymentGateways
- * 2. Register it in App\Providers\PaymentServiceProvider::boot()
- * 3. Add gateway configuration to config/gateways.php and .env
  */
 interface PaymentGatewayInterface
 {

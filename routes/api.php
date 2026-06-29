@@ -16,24 +16,20 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-// Public authentication routes
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
 });
 
-// Protected routes
 Route::middleware('auth:api')->group(function () {
-    // Auth
+    // Authentication
     Route::prefix('auth')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
         Route::post('/refresh', [AuthController::class, 'refresh']);
     });
-
     // Orders
     Route::apiResource('orders', OrderController::class);
-
     // Payments
     Route::get('/payments', [PaymentController::class, 'index']);
     Route::get('/orders/{order}/payments', [PaymentController::class, 'orderPayments']);

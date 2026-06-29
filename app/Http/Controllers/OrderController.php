@@ -2,18 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Order;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
+use App\Http\Resources\OrderResource;
 use App\Http\Requests\StoreOrderRequest;
 use App\Http\Requests\UpdateOrderRequest;
-use App\Http\Resources\OrderResource;
-use App\Models\Order;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class OrderController extends Controller
 {
     /**
-     * Display a listing of orders with optional status filtering.
+     * Display a listing of orders with status filtering.
      */
     public function index(Request $request)
     {
@@ -33,38 +33,40 @@ class OrderController extends Controller
     /**
      * Store a newly created order.
      */
-    public function store(StoreOrderRequest $request): JsonResponse
+    public function store(StoreOrderRequest $request): OrderResource
     {
         $validated = $request->validated();
 
-        // Create the order
-        $order = Order::create([
-            'user_id' => auth()->id(),
-            'status' => 'pending',
-            'total' => 0,
-        ]);
+        $order = DB::transaction(function () use ($validated) {
 
-        // Create order items and calculate total
-        $total = 0;
-        foreach ($validated['items'] as $itemData) {
-            $subtotal = round($itemData['quantity'] * $itemData['price'], 2);
-            $total += $subtotal;
-
-            $order->items()->create([
-                'product_name' => $itemData['product_name'],
-                'quantity' => $itemData['quantity'],
-                'price' => $itemData['price'],
-                'subtotal' => $subtotal,
+            $order = Order::create([
+                'user_id' => auth()->id(),
+                'status'  => 'pending',
+                'total'   => 0,
             ]);
-        }
 
-        // Update order total
-        $order->update(['total' => $total]);
-        $order->load(['items', 'payments']);
+            $total = 0;
 
-        return (new OrderResource($order))
-            ->response()
-            ->setStatusCode(201);
+            $itemsToInsert = collect($validated['items'])->map(function ($itemData) use (&$total) {
+                $subtotal = round($itemData['quantity'] * $itemData['price'], 2);
+                $total += $subtotal;
+
+                return [
+                    'product_name' => $itemData['product_name'],
+                    'quantity'     => $itemData['quantity'],
+                    'price'        => $itemData['price'],
+                    'subtotal'     => $subtotal,
+                ];
+            })->all();
+
+            $order->items()->createMany($itemsToInsert);
+
+            $order->update(['total' => $total]);
+
+            return $order;
+        });
+
+        return new OrderResource($order->load(['items', 'payments']));
     }
 
     /**
@@ -87,46 +89,42 @@ class OrderController extends Controller
     /**
      * Update the specified order.
      */
-    public function update(UpdateOrderRequest $request, Order $order): OrderResource|JsonResponse
+    public function update(UpdateOrderRequest $request, Order $order): OrderResource
     {
-        // Ensure the order belongs to the authenticated user
         if ($order->user_id !== auth()->id()) {
-            return response()->json([
-                'message' => 'Order not found.',
-            ], 404);
+            abort(404, 'Order not found.');
         }
 
         $validated = $request->validated();
 
-        // Update status if provided
-        if (isset($validated['status'])) {
-            $order->update(['status' => $validated['status']]);
-        }
+        DB::transaction(function () use ($validated, $order) {
 
-        // Update items if provided
-        if (isset($validated['items'])) {
-            // Delete existing items and replace
-            $order->items()->delete();
-
-            $total = 0;
-            foreach ($validated['items'] as $itemData) {
-                $subtotal = round($itemData['quantity'] * $itemData['price'], 2);
-                $total += $subtotal;
-
-                $order->items()->create([
-                    'product_name' => $itemData['product_name'],
-                    'quantity' => $itemData['quantity'],
-                    'price' => $itemData['price'],
-                    'subtotal' => $subtotal,
-                ]);
+            if (isset($validated['status'])) {
+                $order->update(['status' => $validated['status']]);
             }
 
-            $order->update(['total' => $total]);
-        }
+            if (isset($validated['items'])) {
+                $order->items()->delete();
 
-        $order->load(['items', 'payments']);
+                $total = 0;
+                $itemsToInsert = collect($validated['items'])->map(function ($itemData) use (&$total) {
+                    $subtotal = round($itemData['quantity'] * $itemData['price'], 2);
+                    $total += $subtotal;
 
-        return new OrderResource($order);
+                    return [
+                        'product_name' => $itemData['product_name'],
+                        'quantity'     => $itemData['quantity'],
+                        'price'        => $itemData['price'],
+                        'subtotal'     => $subtotal,
+                    ];
+                })->all();
+
+                $order->items()->createMany($itemsToInsert);
+                $order->update(['total' => $total]);
+            }
+        });
+
+        return new OrderResource($order->load(['items', 'payments']));
     }
 
     /**
@@ -136,7 +134,6 @@ class OrderController extends Controller
      */
     public function destroy(Order $order): JsonResponse
     {
-        // Ensure the order belongs to the authenticated user
         if ($order->user_id !== auth()->id()) {
             return response()->json([
                 'message' => 'Order not found.',

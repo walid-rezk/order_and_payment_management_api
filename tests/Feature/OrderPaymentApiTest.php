@@ -27,7 +27,7 @@ class OrderPaymentApiTest extends TestCase
             'password' => bcrypt('12345678')
         ]);
 
-        // 2. Mock a login request to capture the explicit token structure from AuthController
+        // 2. Mock a login request to capture the explicit token
         $response = $this->postJson('/api/auth/login', [
             'email' => 'walid@test.com',
             'password' => '12345678'
@@ -55,7 +55,7 @@ class OrderPaymentApiTest extends TestCase
 
         $this->postJson('/api/orders', $orderData, ['Authorization' => "Bearer $this->token"])
             ->assertStatus(201)
-            ->assertJsonPath('data.total', '130.00') // (2 * 25) + (1 * 80)
+            ->assertJsonPath('data.total', '130.00')
             ->assertJsonPath('data.status', 'pending');
     }
 
@@ -91,8 +91,6 @@ class OrderPaymentApiTest extends TestCase
             'total' => 90.00
         ]);
 
-        // 1. Instantiate the readonly class directly through its constructor parameters
-        // Update the argument names/order below to match your DTO's exact constructor signature
         $paymentResult = new \App\DTOs\PaymentResult(
             success: true,
             message: 'successful',

@@ -2,14 +2,11 @@
 
 namespace App\Services;
 
-use App\Contracts\PaymentGatewayInterface;
 use InvalidArgumentException;
+use App\Contracts\PaymentGatewayInterface;
 
 /**
- * Manages payment gateway resolution using the strategy pattern.
- *
- * This class acts as a registry/resolver for payment gateways. New gateways
- * are registered here and resolved at runtime based on the payment method.
+ * Manages payment gateway using the strategy pattern.
  */
 class PaymentManager
 {
@@ -33,12 +30,10 @@ class PaymentManager
      */
     public function resolveGateway(string $method): PaymentGatewayInterface
     {
-        // First try direct name match
         if (isset($this->gateways[$method])) {
             return $this->gateways[$method];
         }
 
-        // Then check supportsMethod for more flexible matching
         foreach ($this->gateways as $gateway) {
             if ($gateway->supportsMethod($method)) {
                 return $gateway;

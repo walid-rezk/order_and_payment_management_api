@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\OrderStatus;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -17,35 +18,31 @@ class UpdateOrderRequest extends FormRequest
 
     /**
      * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
         return [
-            'status' => ['sometimes', Rule::in(['pending', 'confirmed', 'cancelled'])],
-            'items' => ['sometimes', 'array', 'min:1'],
-            'items.*.product_name' => ['required_with:items', 'string', 'max:255'],
-            'items.*.quantity' => ['required_with:items', 'integer', 'min:1'],
-            'items.*.price' => ['required_with:items', 'numeric', 'min:0.01'],
+            'status'                 => ['sometimes', Rule::enum(OrderStatus::class)],
+            'items'                  => ['sometimes', 'array', 'min:1'],
+            'items.*.product_name'   => ['required_with:items', 'string', 'max:255'],
+            'items.*.quantity'       => ['required_with:items', 'integer', 'min:1'],
+            'items.*.price'          => ['required_with:items', 'numeric', 'min:0.01'],
         ];
     }
 
     /**
      * Get custom messages for validator errors.
-     *
-     * @return array<string, string>
      */
     public function messages(): array
     {
         return [
-            'status.in' => 'Status must be one of: pending, confirmed, cancelled.',
-            'items.min' => 'At least one item is required when updating items.',
-            'items.*.product_name.required_with' => 'Each item must have a product name.',
-            'items.*.quantity.required_with' => 'Each item must have a quantity.',
-            'items.*.quantity.min' => 'Item quantity must be at least 1.',
-            'items.*.price.required_with' => 'Each item must have a price.',
-            'items.*.price.min' => 'Item price must be at least 0.01.',
+            'status.Illuminate\Validation\Rules\Enum' => 'Status must be one of: ' . OrderStatus::commaSeparated() . '.',
+            'items.min'                               => 'At least one item is required when updating items.',
+            'items.*.product_name.required_with'      => 'Each item must have a product name.',
+            'items.*.quantity.required_with'          => 'Each item must have a quantity.',
+            'items.*.quantity.min'                    => 'Item quantity must be at least 1.',
+            'items.*.price.required_with'             => 'Each item must have a price.',
+            'items.*.price.min'                       => 'Item price must be at least 0.01.',
         ];
     }
 }

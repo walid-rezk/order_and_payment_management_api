@@ -31,9 +31,6 @@ class CreditCardGateway implements PaymentGatewayInterface
 
     /**
      * Simulate credit card payment processing.
-     *
-     * In a real implementation, this would call an external API
-     * using $this->apiKey and $this->secret for authentication.
      */
     public function processPayment(Order $order, float $amount): PaymentResult
     {
@@ -42,7 +39,7 @@ class CreditCardGateway implements PaymentGatewayInterface
             return PaymentResult::failed('Credit card gateway is not configured.');
         }
 
-        // Simulate processing — in production, this would be an API call
+        // Simulate payment processing, this would be an API call on production
         $transactionId = 'cc_txn_' . Str::uuid()->toString();
 
         return PaymentResult::successful(

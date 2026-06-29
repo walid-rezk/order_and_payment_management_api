@@ -2,10 +2,10 @@
 
 namespace App\Providers;
 
-use App\Services\PaymentGateways\CreditCardGateway;
-use App\Services\PaymentGateways\PaypalGateway;
 use App\Services\PaymentManager;
 use Illuminate\Support\ServiceProvider;
+use App\Services\PaymentGateways\PaypalGateway;
+use App\Services\PaymentGateways\CreditCardGateway;
 
 class PaymentServiceProvider extends ServiceProvider
 {
@@ -21,11 +21,6 @@ class PaymentServiceProvider extends ServiceProvider
 
     /**
      * Bootstrap services.
-     *
-     * Register all payment gateways here. To add a new gateway:
-     * 1. Create a class implementing PaymentGatewayInterface
-     * 2. Add a $manager->registerGateway(new YourGateway()) line below
-     * 3. Add configuration to config/gateways.php
      */
     public function boot(): void
     {

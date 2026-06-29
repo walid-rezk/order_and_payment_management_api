@@ -2,14 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\ProcessPaymentRequest;
-use App\Http\Resources\PaymentResource;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
+use InvalidArgumentException;
 use App\Services\PaymentManager;
 use Illuminate\Http\JsonResponse;
+use App\Http\Resources\PaymentResource;
+use App\Http\Requests\ProcessPaymentRequest;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use InvalidArgumentException;
 
 class PaymentController extends Controller
 {
@@ -53,7 +55,7 @@ class PaymentController extends Controller
     /**
      * Process a payment for the given order.
      *
-     * Business rule: payments can only be processed for orders in 'confirmed' status.
+     * payments can only be processed for orders in 'confirmed' status.
      */
     public function processPayment(ProcessPaymentRequest $request, Order $order): JsonResponse
     {
@@ -64,8 +66,8 @@ class PaymentController extends Controller
             ], 404);
         }
 
-        // Business rule: only confirmed orders can be paid
-        if ($order->status !== 'confirmed') {
+        // only confirmed orders can be paid
+        if ($order->status !== OrderStatus::CONFIRMED) {
             return response()->json([
                 'message' => 'Payments can only be processed for orders in confirmed status.',
                 'current_status' => $order->status,
@@ -88,7 +90,7 @@ class PaymentController extends Controller
             'order_id' => $order->id,
             'payment_method' => $validated['payment_method'],
             'amount' => $validated['amount'],
-            'status' => 'pending',
+            'status' => PaymentStatus::PENDING,
         ]);
 
         // Process through the gateway
@@ -96,7 +98,7 @@ class PaymentController extends Controller
 
         // Update payment based on result
         $payment->update([
-            'status' => $result->success ? 'successful' : 'failed',
+            'status' => $result->success ? PaymentStatus::SUCCESSFUL : PaymentStatus::FAILED,
             'gateway_transaction_id' => $result->transactionId ?: null,
         ]);
 
