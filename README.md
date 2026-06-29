@@ -40,6 +40,9 @@ This project is fully dockerized using a custom Docker Compose orchestration. Fo
 8. **Running the Test:**
    ```bash
    docker compose exec app php artisan test
+9. **Import postman collection JSON file:**
+   
+   On the root directory, there's a file `Order and Payment Management API.postman_collection.json` just import it on postman.
 
 ## 🛠️ Payment Gateway Extensibility (Strategy Pattern)
 The system implements the Strategy Design Pattern managed through a central Service Container Provider, allowing new payment methods to be integrated without altering core controllers or existing checkout flows.
